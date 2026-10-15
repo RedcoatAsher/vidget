@@ -1,0 +1,51 @@
+# xcodegen spec — run `xcodegen generate` (build.sh does it) to produce Vidget.xcodeproj.
+name: Vidget
+options:
+  bundleIdPrefix: com.redcoatasher
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+settings:
+  base:
+    DEVELOPMENT_TEAM: H5K2TS4JRX
+    CODE_SIGN_STYLE: Automatic
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "3"
+    ENABLE_HARDENED_RUNTIME: YES
+    SWIFT_STRICT_CONCURRENCY: minimal
+targets:
+  Vidget:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/Vidget
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.redcoatasher.vidget
+        INFOPLIST_FILE: Info.plist
+        CODE_SIGN_ENTITLEMENTS: Vidget.entitlements
+    dependencies:
+      - target: VidgetWidget
+  VidgetWidget:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Sources/VidgetWidget
+      - Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.redcoatasher.vidget.widget
+        INFOPLIST_FILE: Sources/VidgetWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Sources/VidgetWidget/VidgetWidget.entitlements
+schemes:
+  Vidget:
+    build:
+      targets:
+        Vidget: all
+    run:
+      config: Debug
+    archive:
+      config: Release

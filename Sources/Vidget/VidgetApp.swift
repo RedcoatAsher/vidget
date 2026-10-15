@@ -31,4 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+
+    /// `vidget://open` — the WidgetKit tile links here. Surface the widget; open settings if empty.
+    func application(_ application: NSApplication, open urls: [URL]) {
+        NSApp.activate(ignoringOtherApps: true)
+        window.orderFront(nil)
+        if !model.hasContent { model.beginEditing() }
+    }
 }

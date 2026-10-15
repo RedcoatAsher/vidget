@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import WidgetKit
 
 /// All widget state. Persisted bits live in UserDefaults.
 final class WidgetModel: ObservableObject {
@@ -12,6 +13,7 @@ final class WidgetModel: ObservableObject {
     @Published private(set) var startSeconds: Int = 0
     @Published private(set) var sourceURL: String = ""
     @Published var loop: Bool { didSet { defaults.set(loop, forKey: Keys.loop) } }
+    @Published var widgetSize: WidgetGrid.Size { didSet { defaults.set(widgetSize.rawValue, forKey: Keys.size) } }
 
     @Published private(set) var history: [HistoryEntry] = HistoryStore.load()
 
@@ -27,7 +29,7 @@ final class WidgetModel: ObservableObject {
 
     private let defaults = UserDefaults.standard
     private enum Keys {
-        static let videoID = "videoID", playlistID = "playlistID", ace = "aceStreamID", engine = "engineAddress", start = "startSeconds", source = "sourceURL", loop = "loop"
+        static let videoID = "videoID", playlistID = "playlistID", ace = "aceStreamID", engine = "engineAddress", size = "widgetSize", start = "startSeconds", source = "sourceURL", loop = "loop"
     }
 
     init() {
@@ -38,6 +40,7 @@ final class WidgetModel: ObservableObject {
         startSeconds = defaults.integer(forKey: Keys.start)
         sourceURL = defaults.string(forKey: Keys.source) ?? ""
         loop = defaults.bool(forKey: Keys.loop)
+        widgetSize = defaults.string(forKey: Keys.size).flatMap(WidgetGrid.Size.init) ?? .extraLarge
     }
 
     // MARK: Flip to settings
@@ -124,6 +127,15 @@ final class WidgetModel: ObservableObject {
         isEditing = false
         playRequestID += 1
         recordInHistory(link, url: raw)
+        publishToWidget()
+    }
+
+    /// Hands the current item to the WidgetKit tile (title, thumbnail) and asks it to refresh.
+    private func publishToWidget() {
+        guard let entry = history.first else { return }
+        NowPlaying(title: entry.displayTitle, thumbnailURL: entry.thumbnailURL,
+                   sourceURL: entry.url, isAceStream: entry.isAceStream).save()
+        WidgetCenter.shared.reloadTimelines(ofKind: VidgetShared.widgetKind)
     }
 
     func removeFromHistory(_ entry: HistoryEntry) {
@@ -166,6 +178,7 @@ final class WidgetModel: ObservableObject {
                     if let t = meta.title { self.history[i].title = t }
                     if self.history[i].thumbnailURL == nil, let th = meta.thumbnail { self.history[i].thumbnailURL = th }
                     HistoryStore.save(self.history)
+                    if i == 0 { self.publishToWidget() }
                 }
             }
         }

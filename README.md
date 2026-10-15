@@ -3,40 +3,48 @@
 A macOS desktop widget that plays YouTube videos (plus experimental Ace Stream support). Right-click → **Edit Widget…**,
 paste a link, hit **Play** — the widget flips back over and starts playing.
 
-## Why it's an app, not a WidgetKit widget
+## Why it's an app, not (only) a WidgetKit widget
 
 Apple's WidgetKit widgets are static snapshots: no video, no web view, no text input.
 Vidget is therefore a tiny accessory app (no Dock icon) whose borderless window is
-pinned to the **desktop layer** — just above the desktop icons, below every normal
-window — so it behaves like the built-in desktop widgets. "Show Desktop" keeps it visible.
+pinned to the **desktop layer** — the same layer as the built-in desktop widgets — so it
+behaves like one: it snaps to the system widget grid, comes in the system widget sizes
+(Medium 2×1, Large 2×2, Extra Large 4×2), and "Show Desktop" keeps it visible.
+
+It also ships a real WidgetKit tile ("Vidget" in the widget gallery) showing what's
+playing — thumbnail and title. Clicking the tile brings up the player; the tile itself
+can't play video, because nothing in WidgetKit can.
 
 ## Install
 
-**Download:** grab `Vidget.zip` from the [latest release](https://github.com/redcoatasher/vidget/releases/latest),
-unzip, and move `Vidget.app` wherever you like. The build is ad-hoc signed (not notarized),
-so the first launch needs a right-click → **Open**, or:
+**Download:** grab `Vidget-x.y.z.zip` from the [latest release](https://github.com/redcoatasher/vidget/releases/latest),
+unzip, and move `Vidget.app` to `/Applications` (the gallery widget registers from there).
+Releases from v0.3.0 are Developer ID signed and notarized; v0.1–0.2 were ad-hoc signed and
+need a right-click → **Open** on first launch.
+
+**Build from source** (Xcode 15+, macOS 14+, `brew install xcodegen`):
 
 ```sh
-xattr -dr com.apple.quarantine Vidget.app
+./build.sh run     # generates Vidget.xcodeproj, builds build/Vidget.app, launches it
 ```
 
-**Build from source:**
+`project.yml` is the source of truth for the Xcode project; the `.xcodeproj` is generated
+and git-ignored. To work in Xcode, run `xcodegen generate` and open `Vidget.xcodeproj`.
+The app group and widget extension sign with the team in `project.yml`; change
+`DEVELOPMENT_TEAM` and the group id in the two `.entitlements` files to use your own.
 
-```sh
-./build.sh run     # compiles Sources/Vidget → build/Vidget.app and launches it
-```
-
-Requires Xcode command-line tools (`xcrun swiftc`). Targets macOS 13+.
-`Package.swift` is only there so Xcode / VS Code give you code completion — open the
-folder and edit, then use `build.sh` to produce the bundle.
+**Cut a release** (maintainer): `./release.sh v0.3.0` — signs with Developer ID,
+notarizes, staples, and publishes to GitHub. Needs `xcrun notarytool store-credentials
+vidget-notary …` once.
 
 ## Using it
 
 | Action | How |
 |---|---|
 | Set / change the video | Right-click → **Edit Widget…** (also on first launch) |
-| Move the widget | Hover the top edge → drag the grip |
-| Resize | Drag any edge/corner (locked to 16:9) |
+| Move the widget | Hover the top edge → drag the grip; it snaps to the system widget grid on release |
+| Resize | Right-click → **Size** → Medium / Large / Extra Large (the system widget sizes) |
+| Gallery tile | Right-click desktop → *Edit Widgets…* → search "Vidget" |
 | Play / pause, mute / unmute, restart | Right-click menu, or YouTube's own controls |
 | Loop | Checkbox on the settings face |
 | Replay something recent | Settings face lists the last 20 links (title + thumbnail); click to play, hover → ✕ to remove |
@@ -71,6 +79,8 @@ black screen. Playback uses the engine's HLS endpoint (`/ace/manifest.m3u8?id=�
 - Videos whose owners disabled embedding fail with YouTube error 101/150. The widget
   flips back to settings and tells you why.
 - The last video, loop setting and window position/size are remembered between launches.
+- Snapping reads the frames of the system's desktop widgets to find the grid (180 pt pitch).
+  With none on screen it assumes the grid starts 8 pt from the left, under the menu bar.
 - The web view can't be 3D-rotated by SwiftUI, so during the flip the player face shows a
   plain black card; the live player reappears once the flip lands.
 
@@ -88,7 +98,8 @@ files and a shell script on purpose.
 ```
 Sources/Vidget/
   VidgetApp.swift      entry point, accessory activation policy
-  WidgetWindow.swift   borderless desktop-level NSWindow
+  WidgetWindow.swift   borderless desktop-level NSWindow; grid snapping + sizes
+  WidgetGrid.swift     system widget grid detection, size presets
   WidgetModel.swift    state + persistence
   MediaLink.swift      YouTube-or-AceStream link detection, engine URLs + probe
   YouTubeURL.swift     link → video ID / start time
@@ -99,4 +110,10 @@ Sources/Vidget/
   History.swift        history entries, persistence, oEmbed title lookup
   WidgetMenu.swift     shared right-click menu (AppKit + SwiftUI)
   DragHandle.swift     NSView that drags the window
+Sources/Shared/
+  VidgetShared.swift   app-group id + NowPlaying record shared with the widget
+Sources/VidgetWidget/
+  VidgetWidget.swift   WidgetKit "now playing" tile for the gallery
+project.yml            xcodegen spec (app + widget extension)
+build.sh / release.sh  dev build / signed+notarized release
 ```

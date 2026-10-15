@@ -27,6 +27,18 @@ enum WidgetMenu {
             menu.addItem(item("Restart Video", #selector(MenuTarget.restart)))
         }
         menu.addItem(.separator())
+        let sizeItem = NSMenuItem(title: "Size", action: nil, keyEquivalent: "")
+        let sizeMenu = NSMenu()
+        for size in WidgetGrid.Size.allCases {
+            let i = NSMenuItem(title: size.title, action: #selector(MenuTarget.setSize(_:)), keyEquivalent: "")
+            i.target = target
+            i.representedObject = size.rawValue
+            i.state = model.widgetSize == size ? .on : .off
+            sizeMenu.addItem(i)
+        }
+        sizeItem.submenu = sizeMenu
+        menu.addItem(sizeItem)
+        menu.addItem(.separator())
         menu.addItem(item("Quit Vidget", #selector(MenuTarget.quit), key: "q"))
         return menu
     }
@@ -41,6 +53,11 @@ enum WidgetMenu {
         @objc func toggleMute() { webView?.evaluateJavaScript("vidget.toggleMute()") }
         @objc func restart()    { webView?.evaluateJavaScript("vidget.restart()") }
         @objc func quit()       { model?.quit() }
+        @objc func setSize(_ sender: NSMenuItem) {
+            if let raw = sender.representedObject as? String, let size = WidgetGrid.Size(rawValue: raw) {
+                model?.widgetSize = size
+            }
+        }
     }
 
     // MARK: SwiftUI
@@ -48,6 +65,17 @@ enum WidgetMenu {
     @ViewBuilder
     static func swiftUIItems(model: WidgetModel) -> some View {
         Button("Edit Widget…") { model.beginEditing() }
+        Divider()
+        Menu("Size") {
+            ForEach(WidgetGrid.Size.allCases, id: \.self) { size in
+                Button {
+                    model.widgetSize = size
+                } label: {
+                    if model.widgetSize == size { Label(size.title, systemImage: "checkmark") }
+                    else { Text(size.title) }
+                }
+            }
+        }
         Divider()
         Button("Quit Vidget") { model.quit() }
     }

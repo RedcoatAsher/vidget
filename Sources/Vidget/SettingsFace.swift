@@ -11,15 +11,17 @@ struct SettingsFace: View {
             Color.black.opacity(0.35)
 
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    Image(systemName: "play.rectangle.fill")
-                    Text("Vidget").fontWeight(.semibold)
-                    Spacer()
-                    Text("YouTube widget")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                if model.widgetSize != .medium {
+                    HStack(spacing: 6) {
+                        Image(systemName: "play.rectangle.fill")
+                        Text("Vidget").fontWeight(.semibold)
+                        Spacer()
+                        Text("YouTube widget")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .font(.system(size: 13))
                 }
-                .font(.system(size: 13))
 
                 TextField("Paste a YouTube or acestream:// link…", text: $model.draftURL)
                     .textFieldStyle(.roundedBorder)
@@ -67,7 +69,7 @@ struct SettingsFace: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            .padding(14)
+            .padding(model.widgetSize == .medium ? 10 : 14)
         }
         .foregroundStyle(.primary)
         .onChange(of: model.isEditing) { editing in
