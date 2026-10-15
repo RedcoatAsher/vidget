@@ -6,6 +6,9 @@ final class WidgetModel: ObservableObject {
     // Persisted
     @Published private(set) var videoID: String?
     @Published private(set) var playlistID: String?
+    @Published private(set) var aceStreamID: String?
+    /// host:port of the local Ace Stream engine.
+    @Published var engineAddress: String { didSet { defaults.set(engineAddress, forKey: Keys.engine) } }
     @Published private(set) var startSeconds: Int = 0
     @Published private(set) var sourceURL: String = ""
     @Published var loop: Bool { didSet { defaults.set(loop, forKey: Keys.loop) } }
@@ -24,12 +27,14 @@ final class WidgetModel: ObservableObject {
 
     private let defaults = UserDefaults.standard
     private enum Keys {
-        static let videoID = "videoID", playlistID = "playlistID", start = "startSeconds", source = "sourceURL", loop = "loop"
+        static let videoID = "videoID", playlistID = "playlistID", ace = "aceStreamID", engine = "engineAddress", start = "startSeconds", source = "sourceURL", loop = "loop"
     }
 
     init() {
         videoID = defaults.string(forKey: Keys.videoID)
         playlistID = defaults.string(forKey: Keys.playlistID)
+        aceStreamID = defaults.string(forKey: Keys.ace)
+        engineAddress = defaults.string(forKey: Keys.engine) ?? AceStream.defaultEngine
         startSeconds = defaults.integer(forKey: Keys.start)
         sourceURL = defaults.string(forKey: Keys.source) ?? ""
         loop = defaults.bool(forKey: Keys.loop)
@@ -63,18 +68,62 @@ final class WidgetModel: ObservableObject {
             errorMessage = "Paste a YouTube link first."
             return
         }
-        guard let parsed = YouTubeURL.parse(raw) else {
-            errorMessage = "That doesn't look like a YouTube video link."
+        guard let link = MediaLink.parse(raw) else {
+            errorMessage = "That doesn't look like a YouTube or acestream:// link."
             return
         }
-        play(parsed, url: raw)
+        play(link, url: raw)
     }
 
     /// Plays a history entry: flips back and starts it, bumping it to the top of the list.
     func play(_ entry: HistoryEntry) {
-        let parsed = YouTubeURL.Parsed(videoID: entry.videoID, playlistID: entry.playlistID,
-                                       startSeconds: entry.startSeconds)
-        play(parsed, url: entry.url)
+        play(entry.link, url: entry.url)
+    }
+
+    /// True while the pasted link (or the playing one) is an Ace Stream — reveals the engine field.
+    var showsEngineField: Bool {
+        AceStream.looksLikeAceLink(draftURL) || aceStreamID != nil
+    }
+
+    private func play(_ link: MediaLink, url raw: String) {
+        switch link {
+        case .youtube(let parsed):
+            apply(parsed, url: raw)
+            startPlayback(link, url: raw)
+        case .acestream(let id):
+            // Don't flip to a black screen if there's no engine to talk to.
+            errorMessage = "Checking Ace Stream engine…"
+            let engine = engineAddress
+            Task {
+                let ok = await AceStream.engineIsReachable(engine)
+                await MainActor.run {
+                    guard ok else {
+                        self.errorMessage = "No Ace Stream engine at \(engine). Start one (see README) or fix the address."
+                        return
+                    }
+                    self.applyAce(id, url: raw)
+                    self.startPlayback(link, url: raw)
+                }
+            }
+        }
+    }
+
+    private func applyAce(_ id: String, url raw: String) {
+        videoID = nil; playlistID = nil; startSeconds = 0
+        aceStreamID = id
+        sourceURL = raw
+        defaults.removeObject(forKey: Keys.videoID)
+        defaults.removeObject(forKey: Keys.playlistID)
+        defaults.set(0, forKey: Keys.start)
+        defaults.set(id, forKey: Keys.ace)
+        defaults.set(raw, forKey: Keys.source)
+    }
+
+    private func startPlayback(_ link: MediaLink, url raw: String) {
+        errorMessage = nil
+        isEditing = false
+        playRequestID += 1
+        recordInHistory(link, url: raw)
     }
 
     func removeFromHistory(_ entry: HistoryEntry) {
@@ -82,26 +131,23 @@ final class WidgetModel: ObservableObject {
         HistoryStore.save(history)
     }
 
-    private func play(_ parsed: YouTubeURL.Parsed, url raw: String) {
+    private func apply(_ parsed: YouTubeURL.Parsed, url raw: String) {
+        aceStreamID = nil
         videoID = parsed.videoID
         playlistID = parsed.playlistID
         startSeconds = parsed.startSeconds
         sourceURL = raw
+        defaults.removeObject(forKey: Keys.ace)
         defaults.set(parsed.videoID, forKey: Keys.videoID)
         defaults.set(parsed.playlistID, forKey: Keys.playlistID)
         defaults.set(parsed.startSeconds, forKey: Keys.start)
         defaults.set(raw, forKey: Keys.source)
-
-        errorMessage = nil
-        isEditing = false
-        playRequestID += 1
-        recordInHistory(parsed, url: raw)
     }
 
     // MARK: History
 
-    private func recordInHistory(_ parsed: YouTubeURL.Parsed, url: String) {
-        var entry = HistoryEntry(parsed: parsed, url: url)
+    private func recordInHistory(_ link: MediaLink, url: String) {
+        var entry = HistoryEntry(link: link, url: url)
         if let existing = history.first(where: { $0.key == entry.key }) {
             // Keep the title/thumbnail we already looked up; refresh the link and timestamp.
             entry.title = existing.title
@@ -112,7 +158,7 @@ final class WidgetModel: ObservableObject {
         history = Array(history.prefix(HistoryStore.limit))
         HistoryStore.save(history)
 
-        if entry.title == nil {
+        if entry.title == nil, !entry.isAceStream {
             Task { [key = entry.key] in
                 let meta = await HistoryStore.fetchMetadata(for: entry)
                 await MainActor.run {
@@ -143,7 +189,15 @@ final class WidgetModel: ObservableObject {
     }
 
     /// True once a video or playlist has been set.
-    var hasContent: Bool { videoID != nil || playlistID != nil }
+    var hasContent: Bool { videoID != nil || playlistID != nil || aceStreamID != nil }
+
+    /// Called from the web view when the Ace Stream <video> element errors out.
+    func aceStreamFailed() {
+        errorMessage = "The engine accepted the ID but no stream arrived — it may be offline or still finding peers. Try again."
+        draftURL = sourceURL
+        isEditing = true
+        requestKeyboardFocus?()
+    }
 
     func quit() { NSApp.terminate(nil) }
 }

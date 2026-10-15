@@ -8,25 +8,42 @@ struct HistoryEntry: Codable, Identifiable, Equatable {
     var url: String
     var videoID: String?
     var playlistID: String?
+    var aceStreamID: String?
     var startSeconds: Int
     var title: String?
     var thumbnailURL: String?
     var lastPlayed: Date
 
-    init(parsed: YouTubeURL.Parsed, url: String) {
-        key = parsed.videoID ?? "list:\(parsed.playlistID ?? "")"
+    init(link: MediaLink, url: String) {
         self.url = url
-        videoID = parsed.videoID
-        playlistID = parsed.playlistID
-        startSeconds = parsed.startSeconds
         lastPlayed = Date()
-        // Video thumbnails have a predictable URL; no network needed.
-        if let v = parsed.videoID { thumbnailURL = "https://i.ytimg.com/vi/\(v)/mqdefault.jpg" }
+        startSeconds = 0
+        switch link {
+        case .youtube(let parsed):
+            key = parsed.videoID ?? "list:\(parsed.playlistID ?? "")"
+            videoID = parsed.videoID
+            playlistID = parsed.playlistID
+            startSeconds = parsed.startSeconds
+            // Video thumbnails have a predictable URL; no network needed.
+            if let v = parsed.videoID { thumbnailURL = "https://i.ytimg.com/vi/\(v)/mqdefault.jpg" }
+        case .acestream(let id):
+            key = "ace:\(id)"
+            aceStreamID = id
+        }
     }
+
+    /// Rebuilds the playable link from a stored entry.
+    var link: MediaLink {
+        if let id = aceStreamID { return .acestream(id) }
+        return .youtube(.init(videoID: videoID, playlistID: playlistID, startSeconds: startSeconds))
+    }
+
+    var isAceStream: Bool { aceStreamID != nil }
 
     /// What to show if the title hasn't been fetched (or couldn't be).
     var displayTitle: String {
         if let t = title, !t.isEmpty { return t }
+        if let a = aceStreamID { return "Ace Stream \(a.prefix(8))…" }
         if videoID == nil, let p = playlistID { return "Playlist \(p)" }
         return url
     }

@@ -21,16 +21,29 @@ struct SettingsFace: View {
                 }
                 .font(.system(size: 13))
 
-                TextField("Paste a YouTube link…", text: $model.draftURL)
+                TextField("Paste a YouTube or acestream:// link…", text: $model.draftURL)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(size: 13))
                     .focused($urlFocused)
                     .onSubmit { model.submit() }
 
+                if model.showsEngineField {
+                    HStack(spacing: 6) {
+                        Image(systemName: "antenna.radiowaves.left.and.right")
+                            .foregroundStyle(.secondary)
+                        Text("Engine").font(.system(size: 12))
+                        TextField("127.0.0.1:6878", text: $model.engineAddress)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(size: 12))
+                            .onSubmit { model.submit() }
+                    }
+                    .help("Address of your local Ace Stream engine")
+                }
+
                 if let error = model.errorMessage {
-                    Label(error, systemImage: "exclamationmark.triangle.fill")
+                    Label(error, systemImage: error.hasSuffix("…") ? "hourglass" : "exclamationmark.triangle.fill")
                         .font(.caption)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(error.hasSuffix("…") ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
                         .lineLimit(2)
                 }
 
@@ -105,7 +118,9 @@ private struct HistoryRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            Thumbnail(urlString: entry.thumbnailURL, isPlaylist: entry.videoID == nil)
+            Thumbnail(urlString: entry.thumbnailURL,
+                      placeholderSymbol: entry.isAceStream ? "antenna.radiowaves.left.and.right"
+                                       : entry.videoID == nil ? "music.note.list" : "play.rectangle")
                 .frame(width: 48, height: 27)
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
 
@@ -145,7 +160,7 @@ private struct HistoryRow: View {
 
 private struct Thumbnail: View {
     let urlString: String?
-    let isPlaylist: Bool
+    let placeholderSymbol: String
 
     var body: some View {
         ZStack {
@@ -165,7 +180,7 @@ private struct Thumbnail: View {
     }
 
     private var placeholder: some View {
-        Image(systemName: isPlaylist ? "music.note.list" : "play.rectangle")
+        Image(systemName: placeholderSymbol)
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
     }

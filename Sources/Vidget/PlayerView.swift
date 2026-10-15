@@ -49,6 +49,13 @@ struct PlayerView: NSViewRepresentable {
             guard let webView, model.hasContent,
                   loadedRequestID != model.playRequestID else { return }
             loadedRequestID = model.playRequestID
+            if let ace = model.aceStreamID,
+               let manifest = AceStream.manifestURL(engine: model.engineAddress, id: ace) {
+                // Plain-http origin so the http://127.0.0.1 stream isn't mixed content.
+                let html = PlayerHTML.renderAceStream(manifest: manifest)
+                webView.loadHTMLString(html, baseURL: URL(string: "http://vidget.local/ace"))
+                return
+            }
             let html = PlayerHTML.render(videoID: model.videoID, playlistID: model.playlistID,
                                          start: model.startSeconds, loop: model.loop)
             // The page needs a real https origin so the IFrame API's origin/referrer checks pass.
@@ -62,6 +69,8 @@ struct PlayerView: NSViewRepresentable {
                   let type = body["type"] as? String else { return }
             if type == "error", let code = body["code"] as? Int {
                 DispatchQueue.main.async { self.model.playerFailed(code: code) }
+            } else if type == "aceError" {
+                DispatchQueue.main.async { self.model.aceStreamFailed() }
             }
         }
 
@@ -91,9 +100,44 @@ final class WidgetWebView: WKWebView {
     }
 }
 
-// MARK: - Page
+// MARK: - Pages
 
 enum PlayerHTML {
+    /// Native <video> playing the engine's HLS manifest. Exposes the same `vidget.*` hooks the
+    /// context menu uses for YouTube.
+    static func renderAceStream(manifest: URL) -> String {
+        """
+        <!doctype html>
+        <html>
+        <head>
+        <meta charset="utf-8">
+        <style>
+          html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+          video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+          #wait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+                  color: rgba(255,255,255,.6); font: 12px -apple-system, sans-serif; pointer-events: none; }
+        </style>
+        </head>
+        <body>
+        <video id="v" autoplay muted controls playsinline src="\(manifest.absoluteString)"></video>
+        <div id="wait">Connecting to Ace Stream…</div>
+        <script>
+          var v = document.getElementById('v'), wait = document.getElementById('wait');
+          var vidget = {
+            togglePlay: function () { v.paused ? v.play() : v.pause(); },
+            toggleMute: function () { v.muted = !v.muted; },
+            restart:    function () { v.currentTime = 0; v.play(); }
+          };
+          v.addEventListener('playing', function () { wait.style.display = 'none'; });
+          v.addEventListener('error', function () {
+            window.webkit.messageHandlers.vidget.postMessage({ type: 'aceError' });
+          });
+        </script>
+        </body>
+        </html>
+        """
+    }
+
     static func render(videoID: String?, playlistID: String?, start: Int, loop: Bool) -> String {
         // A playlist (incl. YouTube Music albums/playlists) plays through the IFrame API's
         // listType; loop then loops the whole list. A lone video loops via playlist=<its id>.

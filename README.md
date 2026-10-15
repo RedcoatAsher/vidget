@@ -1,6 +1,6 @@
 # Vidget
 
-A macOS desktop widget that plays YouTube videos. Right-click → **Edit Widget…**,
+A macOS desktop widget that plays YouTube videos — and Ace Stream links, if you run the engine. Right-click → **Edit Widget…**,
 paste a link, hit **Play** — the widget flips back over and starts playing.
 
 ## Why it's an app, not a WidgetKit widget
@@ -49,6 +49,21 @@ offsets (`90`, `1m30s`, `1h2m`). Playlist and YouTube Music album/playlist links
 `v=` and `list=` plays that one video. If the clipboard already holds a YouTube link when you open
 settings, it's prefilled.
 
+## Ace Stream links
+
+Paste `acestream://<40-hex-id>` (or just the id). Ace Stream is peer-to-peer, so the widget
+needs a local **Ace Stream engine** to turn the id into video. There's no native macOS engine;
+the easy route is Docker:
+
+```sh
+docker run -d --name acestream -p 6878:6878 --restart unless-stopped martinbjeldbak/acestream-http-proxy
+```
+
+When an Ace link is in the URL field an **Engine** field appears (default `127.0.0.1:6878`).
+The widget pings the engine before flipping; if nothing answers you get a message instead of a
+black screen. Playback uses the engine's HLS endpoint (`/ace/manifest.m3u8?id=…`) in a native
+`<video>` tag. Live streams can take 10–30 s to find peers before the picture appears.
+
 ## Behaviour notes
 
 - **Autoplay is muted.** Embedded players can't start with sound without a user
@@ -75,6 +90,7 @@ Sources/Vidget/
   VidgetApp.swift      entry point, accessory activation policy
   WidgetWindow.swift   borderless desktop-level NSWindow
   WidgetModel.swift    state + persistence
+  MediaLink.swift      YouTube-or-AceStream link detection, engine URLs + probe
   YouTubeURL.swift     link → video ID / start time
   WidgetRootView.swift flip container (AnimatableModifier)
   PlayerFace.swift     player side + hover drag grip + empty state
