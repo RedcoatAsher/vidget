@@ -18,7 +18,7 @@ struct WidgetRootView: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius, style: .continuous))
         .onAppear { angle = model.isEditing ? 180 : 0 }
-        .onChange(of: model.isEditing) { editing in
+        .onChange(of: model.isEditing) { _, editing in
             isFlipping = true
             withAnimation(.easeInOut(duration: Self.flipDuration)) {
                 angle = editing ? 180 : 0

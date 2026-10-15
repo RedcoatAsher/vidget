@@ -24,8 +24,8 @@ fi
 echo "▸ building (Release)"
 rm -rf build/Vidget.app
 xcodebuild -project Vidget.xcodeproj -scheme Vidget -configuration Release \
-  -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath build/DerivedData ${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"} build -quiet \
-  | grep -E "error:|warning: .*Sources/" || true
+  -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath build/DerivedData ONLY_ACTIVE_ARCH=YES ${SIGN_ARGS[@]+"${SIGN_ARGS[@]}"} build -quiet \
+  | grep -E "error:|warning: .*Sources/" | grep -v "exit code 0 but produced no further output" || true
 test -d build/DerivedData/Build/Products/Release/Vidget.app || { echo "build failed" >&2; exit 1; }
 cp -R build/DerivedData/Build/Products/Release/Vidget.app build/
 

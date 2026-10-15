@@ -78,7 +78,7 @@ struct SettingsFace: View {
             .padding(compact ? 10 : 14)
         }
         .foregroundStyle(.primary)
-        .onChange(of: model.isEditing) { editing in
+        .onChange(of: model.isEditing) { _, editing in
             if editing { DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { urlFocused = true } }
         }
         .onAppear { if model.isEditing { urlFocused = true } }
