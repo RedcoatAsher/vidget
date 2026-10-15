@@ -13,7 +13,8 @@ final class WidgetModel: ObservableObject {
     @Published private(set) var startSeconds: Int = 0
     @Published private(set) var sourceURL: String = ""
     @Published var loop: Bool { didSet { defaults.set(loop, forKey: Keys.loop) } }
-    @Published var widgetSize: WidgetGrid.Size { didSet { defaults.set(widgetSize.rawValue, forKey: Keys.size) } }
+    /// A system widget size preset, or nil once the user has resized freely.
+    @Published var widgetSize: WidgetGrid.Size? { didSet { defaults.set(widgetSize?.rawValue, forKey: Keys.size) } }
 
     @Published private(set) var history: [HistoryEntry] = HistoryStore.load()
 
@@ -40,7 +41,12 @@ final class WidgetModel: ObservableObject {
         startSeconds = defaults.integer(forKey: Keys.start)
         sourceURL = defaults.string(forKey: Keys.source) ?? ""
         loop = defaults.bool(forKey: Keys.loop)
-        widgetSize = defaults.string(forKey: Keys.size).flatMap(WidgetGrid.Size.init) ?? .extraLarge
+        // First launch defaults to Extra Large; afterwards nil means "custom size, keep the saved frame".
+        if defaults.object(forKey: Keys.size) == nil && defaults.string(forKey: Keys.videoID) == nil {
+            widgetSize = .extraLarge
+        } else {
+            widgetSize = defaults.string(forKey: Keys.size).flatMap(WidgetGrid.Size.init)
+        }
     }
 
     // MARK: Flip to settings

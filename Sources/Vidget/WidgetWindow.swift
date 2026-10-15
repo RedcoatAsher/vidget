@@ -12,10 +12,10 @@ final class WidgetWindow: NSWindow {
     private var cancellables = Set<AnyCancellable>()
 
     init(model: WidgetModel) {
-        let size = model.widgetSize.windowSize
+        let size = (model.widgetSize ?? .extraLarge).windowSize
         super.init(
             contentRect: NSRect(origin: .zero, size: size),
-            styleMask: [.borderless],
+            styleMask: [.borderless, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -25,6 +25,7 @@ final class WidgetWindow: NSWindow {
         hasShadow = true
         isReleasedWhenClosed = false
         isMovableByWindowBackground = true
+        minSize = NSSize(width: 240, height: 135)
 
         level = WidgetGrid.systemWidgetLevel()
         collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenNone]
@@ -37,14 +38,23 @@ final class WidgetWindow: NSWindow {
             let vf = screen.visibleFrame
             setFrameOrigin(NSPoint(x: vf.maxX - size.width - 24, y: vf.maxY - size.height - 24))
         }
-        apply(size: model.widgetSize, animated: false)
+        // A preset is remembered until the user free-resizes; otherwise the autosaved frame wins.
+        if let preset = model.widgetSize { apply(size: preset, animated: false) }
 
         // Snap once the user finishes dragging (didMove fires continuously during a drag).
         NotificationCenter.default.addObserver(forName: NSWindow.didMoveNotification, object: self, queue: .main) {
             [weak self] _ in self?.scheduleSnap()
         }
+        // A free resize clears the preset and re-aligns the window to the grid.
+        NotificationCenter.default.addObserver(forName: NSWindow.didEndLiveResizeNotification, object: self, queue: .main) {
+            [weak self] _ in
+            guard let self else { return }
+            if let preset = model.widgetSize, preset.windowSize != self.frame.size { model.widgetSize = nil }
+            self.snapToGrid()
+        }
         model.$widgetSize
             .dropFirst()
+            .compactMap { $0 }
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.apply(size: $0, animated: true) }
             .store(in: &cancellables)

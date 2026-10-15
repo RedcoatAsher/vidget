@@ -6,12 +6,18 @@ struct SettingsFace: View {
     @FocusState private var urlFocused: Bool
 
     var body: some View {
+        GeometryReader { geo in
+            settings(compact: geo.size.height < 200)
+        }
+    }
+
+    private func settings(compact: Bool) -> some View {
         ZStack {
             Rectangle().fill(.regularMaterial)
             Color.black.opacity(0.35)
 
             VStack(alignment: .leading, spacing: 8) {
-                if model.widgetSize != .medium {
+                if !compact {
                     HStack(spacing: 6) {
                         Image(systemName: "play.rectangle.fill")
                         Text("Vidget").fontWeight(.semibold)
@@ -69,7 +75,7 @@ struct SettingsFace: View {
                     .buttonStyle(.borderedProminent)
                 }
             }
-            .padding(model.widgetSize == .medium ? 10 : 14)
+            .padding(compact ? 10 : 14)
         }
         .foregroundStyle(.primary)
         .onChange(of: model.isEditing) { editing in

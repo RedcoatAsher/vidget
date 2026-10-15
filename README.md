@@ -8,8 +8,8 @@ paste a link, hit **Play** — the widget flips back over and starts playing.
 Apple's WidgetKit widgets are static snapshots: no video, no web view, no text input.
 Vidget is therefore a tiny accessory app (no Dock icon) whose borderless window is
 pinned to the **desktop layer** — the same layer as the built-in desktop widgets — so it
-behaves like one: it snaps to the system widget grid, comes in the system widget sizes
-(Medium 2×1, Large 2×2, Extra Large 4×2), and "Show Desktop" keeps it visible.
+behaves like one: it snaps to the system widget grid, offers the system widget sizes as presets
+(Medium 2×1, Large 2×2, Extra Large 4×2) alongside free resizing, and "Show Desktop" keeps it visible.
 
 It also ships a real WidgetKit tile ("Vidget" in the widget gallery) showing what's
 playing — thumbnail and title. Clicking the tile brings up the player; the tile itself
@@ -43,7 +43,7 @@ vidget-notary …` once.
 |---|---|
 | Set / change the video | Right-click → **Edit Widget…** (also on first launch) |
 | Move the widget | Hover the top edge → drag the grip; it snaps to the system widget grid on release |
-| Resize | Right-click → **Size** → Medium / Large / Extra Large (the system widget sizes) |
+| Resize | Drag any edge/corner, or right-click → **Size** → Medium / Large / Extra Large (the system widget sizes) |
 | Gallery tile | Right-click desktop → *Edit Widgets…* → search "Vidget" |
 | Play / pause, mute / unmute, restart | Right-click menu, or YouTube's own controls |
 | Loop | Checkbox on the settings face |
