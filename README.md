@@ -1,6 +1,6 @@
 # Vidget
 
-A macOS desktop widget that plays YouTube videos — and Ace Stream links, if you run the engine. Right-click → **Edit Widget…**,
+A macOS desktop widget that plays YouTube videos (plus experimental Ace Stream support). Right-click → **Edit Widget…**,
 paste a link, hit **Play** — the widget flips back over and starts playing.
 
 ## Why it's an app, not a WidgetKit widget
@@ -49,7 +49,7 @@ offsets (`90`, `1m30s`, `1h2m`). Playlist and YouTube Music album/playlist links
 `v=` and `list=` plays that one video. If the clipboard already holds a YouTube link when you open
 settings, it's prefilled.
 
-## Ace Stream links
+## Ace Stream links (experimental, untested)
 
 Paste `acestream://<40-hex-id>` (or just the id). Ace Stream is peer-to-peer, so the widget
 needs a local **Ace Stream engine** to turn the id into video. There's no native macOS engine;

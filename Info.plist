@@ -5,8 +5,8 @@
     <key>CFBundleName</key>                 <string>Vidget</string>
     <key>CFBundleDisplayName</key>          <string>Vidget</string>
     <key>CFBundleIdentifier</key>           <string>com.redcoatasher.vidget</string>
-    <key>CFBundleVersion</key>              <string>1</string>
-    <key>CFBundleShortVersionString</key>   <string>0.1.0</string>
+    <key>CFBundleVersion</key>              <string>2</string>
+    <key>CFBundleShortVersionString</key>   <string>0.2.0</string>
     <key>CFBundleExecutable</key>           <string>Vidget</string>
     <key>CFBundlePackageType</key>          <string>APPL</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
